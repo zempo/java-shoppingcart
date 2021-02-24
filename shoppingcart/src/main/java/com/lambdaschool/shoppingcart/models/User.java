@@ -1,11 +1,16 @@
 package com.lambdaschool.shoppingcart.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import javax.persistence.*;
 import javax.validation.constraints.Email;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -14,7 +19,7 @@ import java.util.Set;
 @Entity
 @Table(name = "users")
 public class User
-    extends Auditable
+        extends Auditable
 {
     /**
      * The primary key (long) of the users table.
@@ -27,7 +32,7 @@ public class User
      * The username (String). Cannot be null and must be unique
      */
     @Column(nullable = false,
-        unique = true)
+            unique = true)
     private String username;
 
     /**
@@ -43,15 +48,15 @@ public class User
      * Primary email account of user. Could be used as the userid. Cannot be null and must be unique.
      */
     @Column(nullable = false,
-        unique = true)
+            unique = true)
     @Email
     private String primaryemail;
 
     @OneToMany(mappedBy = "user",
-        cascade = CascadeType.ALL,
-        orphanRemoval = true)
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
     @JsonIgnoreProperties(value = "user",
-        allowSetters = true)
+            allowSetters = true)
     private Set<CartItem> carts = new HashSet<>();
 
     /**
@@ -59,10 +64,10 @@ public class User
      * connects users to the user role combination
      */
     @OneToMany(mappedBy = "user",
-        cascade = CascadeType.ALL,
-        orphanRemoval = true)
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
     @JsonIgnoreProperties(value = "user",
-        allowSetters = true)
+            allowSetters = true)
     private Set<UserRoles> roles = new HashSet<>();
 
     /**
@@ -82,10 +87,10 @@ public class User
      * @param primaryemail The primary email (String) of the user
      */
     public User(
-        String username,
-        String password,
-        String primaryemail,
-        String comments)
+            String username,
+            String password,
+            String primaryemail,
+            String comments)
     {
         setUsername(username);
         setPassword(password);
@@ -168,9 +173,15 @@ public class User
      *
      * @param password the new password (String) for the user
      */
+
+    public void setPasswordNoEncrypt(String password) {
+        this.password = password;
+    }
+
     public void setPassword(String password)
     {
-        this.password = password;
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        this.password = passwordEncoder.encode(password);
     }
 
     /**
@@ -211,5 +222,19 @@ public class User
     public void setCarts(Set<CartItem> carts)
     {
         this.carts = carts;
+    }
+
+    @JsonIgnore
+    public List<SimpleGrantedAuthority> getAuthority() {
+
+        List<SimpleGrantedAuthority> rtnList = new ArrayList<>();
+
+        for (UserRoles r : this.roles) {
+
+            String myRole = "ROLE_" + r.getRole().getName().toUpperCase();
+            rtnList.add(new SimpleGrantedAuthority(myRole));
+        }
+
+        return rtnList;
     }
 }
